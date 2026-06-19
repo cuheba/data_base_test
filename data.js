@@ -729,3 +729,31 @@ const QUIZ_DATA = {
     ]
   }
 };
+
+// ---------------- Theme toggle (light / dark) ----------------
+(function(){
+  const THEME_KEY = 'db-theme';
+  function applyTheme(theme){
+    if(theme === 'dark') document.documentElement.classList.add('dark');
+    else document.documentElement.classList.remove('dark');
+    const btns = document.querySelectorAll('#theme-toggle');
+    btns.forEach(b=>{ b.textContent = (theme === 'dark') ? '☀️' : '🌙'; });
+  }
+
+  try{
+    const saved = localStorage.getItem(THEME_KEY) || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    applyTheme(saved);
+  }catch(e){ /* ignore */ }
+
+  document.addEventListener('DOMContentLoaded', ()=>{
+    const btns = document.querySelectorAll('#theme-toggle');
+    btns.forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const isDark = document.documentElement.classList.toggle('dark');
+        const next = isDark ? 'dark' : 'light';
+        try{ localStorage.setItem(THEME_KEY, next); }catch(e){}
+        btns.forEach(b=>{ b.textContent = next === 'dark' ? '☀️' : '🌙'; });
+      });
+    });
+  });
+})();

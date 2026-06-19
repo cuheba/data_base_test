@@ -22,6 +22,34 @@
     --sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   }
 
+  /* Dark theme override — applied when `html` has class `dark` */
+  html.dark{
+    --paper:#0b1412;
+    --ink:#DCEEE6;
+    --ink-soft:#9FB0A8;
+    --line:#16302b;
+    --accent:#26977a;
+    --accent-soft:#0f2b22;
+    --warn:#C08A6A;
+    --warn-soft:#33221a;
+    --gold:#9f7a34;
+    --card:#0e1513;
+  }
+
+  .theme-toggle{
+    background:transparent;
+    border:1px solid var(--line);
+    color:var(--ink);
+    padding:8px 10px;
+    border-radius:10px;
+    font-size:16px;
+    cursor:pointer;
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+  }
+  .theme-toggle:hover{ background:var(--card); }
+
   * { box-sizing:border-box; }
   html,body{ margin:0; padding:0; }
   body{
@@ -179,6 +207,9 @@
     margin:0;
     font-weight:600;
   }
+
+  /* Ensure headings are readable in both themes */
+  h1, h2, h3 { color: var(--ink); }
   .section-head .rule{
     flex:1;
     height:1px;
@@ -200,6 +231,8 @@
     font-family:var(--sans);
     transition:transform .18s ease, box-shadow .18s ease;
   }
+  /* Keep marathon card headings using the card's color (higher specificity) */
+  .marathon-card h1, .marathon-card h2, .marathon-card h3 { color: inherit; }
   .marathon-card:hover{
     transform:translateY(-2px);
     box-shadow:0 14px 30px -12px rgba(20,40,35,0.45);
@@ -303,6 +336,9 @@
     font-size:21px;
     margin:6px 0 4px;
   }
+
+  /* Make ticket number visible on dark backgrounds */
+  .bilet-card h3{ color: var(--ink); }
   .bilet-meta{
     font-size:12.5px;
     color:var(--ink-soft);
@@ -431,7 +467,7 @@
   }
   .option:hover:not(.locked){
     border-color:var(--accent);
-    background:#fff;
+    background:var(--card);
   }
   .option:focus-visible{
     outline:3px solid var(--accent);
@@ -483,6 +519,12 @@
     line-height:1.55;
     color:var(--ink-soft);
     display:none;
+  }
+  /* Dark theme for explanation box */
+  html.dark .explain-box{
+    background: rgba(255,255,255,0.02);
+    border:1px solid rgba(255,255,255,0.04);
+    color:var(--ink-soft);
   }
   .explain-box.show{ display:block; animation:fadeUp .22s ease; }
   .explain-box .label{
@@ -673,6 +715,7 @@
           <small>подготовка к экзамену по дисциплине «Базы данных»</small>
         </div>
       </div>
+      <button class="theme-toggle" id="theme-toggle" aria-label="Переключить тему">🌙</button>
       <div class="progress-pill" id="overall-pill">0 / 0 пройдено</div>
     </div>
 
@@ -779,6 +822,7 @@
           <small>результат прохождения</small>
         </div>
       </div>
+      <button class="theme-toggle" id="theme-toggle" aria-label="Переключить тему">🌙</button>
     </div>
 
     <div class="result-hero">
