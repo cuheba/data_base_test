@@ -1,0 +1,1167 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Базы данных — тренажёр билетов</title>
+<style>
+  :root{
+    --paper:#FBF8F2;
+    --ink:#1E2A28;
+    --ink-soft:#566260;
+    --line:#D8D2C2;
+    --accent:#1F6F5C;      /* deep teal — "primary key" green */
+    --accent-soft:#E4EFE9;
+    --warn:#B5542A;        /* terracotta-rust for wrong / foreign key */
+    --warn-soft:#F6E6DC;
+    --gold:#C49A3A;        /* amber for marathon / streak */
+    --card:#FFFFFF;
+    --radius:14px;
+    --mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+    --serif: 'Source Serif 4', Georgia, serif;
+    --sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+
+  * { box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--sans);
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+    background-image:
+      radial-gradient(circle at 1px 1px, rgba(30,42,40,0.06) 1px, transparent 0);
+    background-size: 22px 22px;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration:0.01ms !important; animation-iteration-count:1 !important; transition-duration:0.01ms !important; }
+  }
+
+  a{ color:inherit; }
+
+  /* ---------- Layout shell ---------- */
+  .app{
+    max-width:880px;
+    margin:0 auto;
+    padding:28px 20px 80px;
+  }
+
+  .topbar{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom:28px;
+    flex-wrap:wrap;
+  }
+  .brand{
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .brand-mark{
+    width:34px; height:34px;
+    border-radius:8px;
+    background:var(--ink);
+    position:relative;
+    flex:none;
+  }
+  .brand-mark::before, .brand-mark::after{
+    content:"";
+    position:absolute;
+    left:7px; right:7px;
+    height:2px;
+    background:var(--paper);
+  }
+  .brand-mark::before{ top:11px; }
+  .brand-mark::after{ top:17px; }
+  .brand-mark span{
+    position:absolute; left:7px; right:7px; bottom:7px; height:2px; background:var(--gold);
+  }
+  .brand-text{ display:flex; flex-direction:column; line-height:1.15; }
+  .brand-text strong{ font-family:var(--serif); font-size:19px; font-weight:600; }
+  .brand-text small{ color:var(--ink-soft); font-size:12px; letter-spacing:.02em; }
+
+  .progress-pill{
+    font-family:var(--mono);
+    font-size:12px;
+    color:var(--ink-soft);
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:100px;
+    padding:6px 12px;
+  }
+
+  /* ---------- Hero / home screen ---------- */
+  .hero{
+    margin-bottom:34px;
+  }
+  .hero-eyebrow{
+    font-family:var(--mono);
+    font-size:12px;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:var(--accent);
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-bottom:10px;
+  }
+  .hero-eyebrow::before{
+    content:"";
+    width:7px; height:7px;
+    border-radius:2px;
+    background:var(--accent);
+    display:inline-block;
+  }
+  .hero h1{
+    font-family:var(--serif);
+    font-size:clamp(28px, 5vw, 40px);
+    line-height:1.12;
+    margin:0 0 12px;
+    letter-spacing:-0.01em;
+  }
+  .hero p{
+    color:var(--ink-soft);
+    font-size:16px;
+    line-height:1.55;
+    max-width:60ch;
+    margin:0;
+  }
+
+  /* ---------- Stat strip ---------- */
+  .stat-strip{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:1px;
+    background:var(--line);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    overflow:hidden;
+    margin:28px 0;
+  }
+  .stat{
+    background:var(--card);
+    padding:16px 18px;
+  }
+  .stat-num{
+    font-family:var(--mono);
+    font-size:24px;
+    font-weight:600;
+    color:var(--accent);
+  }
+  .stat-label{
+    font-size:12px;
+    color:var(--ink-soft);
+    margin-top:2px;
+  }
+
+  /* ---------- Section heading ---------- */
+  .section-head{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin:36px 0 14px;
+  }
+  .section-head .tag{
+    font-family:var(--mono);
+    font-size:11px;
+    color:var(--ink-soft);
+    border:1px solid var(--line);
+    border-radius:5px;
+    padding:2px 7px;
+  }
+  .section-head h2{
+    font-family:var(--serif);
+    font-size:19px;
+    margin:0;
+    font-weight:600;
+  }
+  .section-head .rule{
+    flex:1;
+    height:1px;
+    background:var(--line);
+  }
+
+  /* ---------- Marathon card (signature element) ---------- */
+  .marathon-card{
+    position:relative;
+    background:linear-gradient(135deg, #1E2A28 0%, #16312B 60%, #1F6F5C 130%);
+    color:#F5F1E6;
+    border-radius:18px;
+    padding:26px 26px 22px;
+    overflow:hidden;
+    cursor:pointer;
+    border:none;
+    text-align:left;
+    width:100%;
+    font-family:var(--sans);
+    transition:transform .18s ease, box-shadow .18s ease;
+  }
+  .marathon-card:hover{
+    transform:translateY(-2px);
+    box-shadow:0 14px 30px -12px rgba(20,40,35,0.45);
+  }
+  .marathon-card:focus-visible{
+    outline:3px solid var(--gold);
+    outline-offset:3px;
+  }
+  .marathon-card .schema-row{
+    position:absolute;
+    inset:0;
+    opacity:.16;
+    background-image:
+      repeating-linear-gradient(90deg, transparent 0 78px, rgba(245,241,230,.5) 78px 79px),
+      repeating-linear-gradient(0deg, transparent 0 26px, rgba(245,241,230,.35) 26px 27px);
+    pointer-events:none;
+  }
+  .marathon-top{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:14px;
+    position:relative;
+  }
+  .marathon-card h3{
+    font-family:var(--serif);
+    font-size:24px;
+    margin:0 0 6px;
+    font-weight:600;
+  }
+  .marathon-card p{
+    margin:0;
+    color:#D7E6DF;
+    font-size:14.5px;
+    line-height:1.5;
+    max-width:42ch;
+  }
+  .marathon-badge{
+    font-family:var(--mono);
+    font-size:11px;
+    background:rgba(245,241,230,0.14);
+    border:1px solid rgba(245,241,230,0.3);
+    color:#F5F1E6;
+    padding:5px 10px;
+    border-radius:100px;
+    white-space:nowrap;
+  }
+  .marathon-cta{
+    position:relative;
+    margin-top:18px;
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    font-family:var(--mono);
+    font-size:13px;
+    color:#F5F1E6;
+  }
+  .marathon-cta svg{ width:16px; height:16px; }
+
+  /* ---------- Bilet grid ---------- */
+  .bilet-grid{
+    display:grid;
+    grid-template-columns:repeat(2, 1fr);
+    gap:12px;
+  }
+  @media (max-width:560px){
+    .bilet-grid{ grid-template-columns:1fr; }
+  }
+  .bilet-card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:18px 18px 16px;
+    cursor:pointer;
+    text-align:left;
+    font-family:var(--sans);
+    position:relative;
+    transition:border-color .15s ease, transform .15s ease;
+  }
+  .bilet-card:hover{
+    border-color:var(--accent);
+    transform:translateY(-1px);
+  }
+  .bilet-card:focus-visible{
+    outline:3px solid var(--accent);
+    outline-offset:2px;
+  }
+  .bilet-card-top{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+  }
+  .bilet-num{
+    font-family:var(--mono);
+    font-size:11px;
+    color:var(--ink-soft);
+    letter-spacing:.04em;
+  }
+  .bilet-card h3{
+    font-family:var(--serif);
+    font-size:21px;
+    margin:6px 0 4px;
+  }
+  .bilet-meta{
+    font-size:12.5px;
+    color:var(--ink-soft);
+  }
+  .bilet-score{
+    font-family:var(--mono);
+    font-size:12px;
+    padding:3px 8px;
+    border-radius:100px;
+    background:var(--accent-soft);
+    color:var(--accent);
+    white-space:nowrap;
+  }
+  .bilet-score.empty{
+    background:transparent;
+    border:1px dashed var(--line);
+    color:var(--ink-soft);
+  }
+  .bilet-bar{
+    margin-top:12px;
+    height:4px;
+    border-radius:4px;
+    background:var(--line);
+    overflow:hidden;
+  }
+  .bilet-bar-fill{
+    height:100%;
+    background:var(--accent);
+    border-radius:4px;
+    transition:width .3s ease;
+  }
+
+  /* ---------- Quiz screen ---------- */
+  .quiz-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom:18px;
+    flex-wrap:wrap;
+  }
+  .back-link{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    font-family:var(--mono);
+    font-size:13px;
+    color:var(--ink-soft);
+    background:none;
+    border:none;
+    cursor:pointer;
+    padding:6px 0;
+  }
+  .back-link:hover{ color:var(--ink); }
+  .back-link svg{ width:14px; height:14px; }
+
+  .quiz-track{
+    height:6px;
+    background:var(--line);
+    border-radius:6px;
+    overflow:hidden;
+    margin-bottom:6px;
+  }
+  .quiz-track-fill{
+    height:100%;
+    border-radius:6px;
+    background:var(--accent);
+    transition:width .25s ease;
+  }
+  .quiz-track-meta{
+    display:flex;
+    justify-content:space-between;
+    font-family:var(--mono);
+    font-size:11.5px;
+    color:var(--ink-soft);
+    margin-bottom:22px;
+  }
+
+  .q-card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:18px;
+    padding:28px 26px 24px;
+  }
+  .q-tagrow{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-bottom:14px;
+  }
+  .q-tagrow .src{
+    font-family:var(--mono);
+    font-size:11px;
+    color:var(--accent);
+    background:var(--accent-soft);
+    padding:3px 9px;
+    border-radius:100px;
+  }
+  .q-text{
+    font-family:var(--serif);
+    font-size:clamp(18px,2.6vw,21px);
+    line-height:1.45;
+    margin:0 0 22px;
+  }
+
+  .options{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+  .option{
+    display:flex;
+    align-items:flex-start;
+    gap:12px;
+    text-align:left;
+    border:1.5px solid var(--line);
+    background:var(--paper);
+    border-radius:12px;
+    padding:13px 16px;
+    cursor:pointer;
+    font-family:var(--sans);
+    font-size:15px;
+    line-height:1.45;
+    color:var(--ink);
+    transition:border-color .12s ease, background .12s ease;
+  }
+  .option:hover:not(.locked){
+    border-color:var(--accent);
+    background:#fff;
+  }
+  .option:focus-visible{
+    outline:3px solid var(--accent);
+    outline-offset:2px;
+  }
+  .option .letter{
+    font-family:var(--mono);
+    font-size:13px;
+    font-weight:600;
+    color:var(--ink-soft);
+    border:1.5px solid var(--line);
+    border-radius:7px;
+    min-width:26px;
+    height:26px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex:none;
+    margin-top:1px;
+  }
+  .option.correct{
+    border-color:var(--accent);
+    background:var(--accent-soft);
+  }
+  .option.correct .letter{
+    background:var(--accent);
+    border-color:var(--accent);
+    color:#fff;
+  }
+  .option.wrong{
+    border-color:var(--warn);
+    background:var(--warn-soft);
+  }
+  .option.wrong .letter{
+    background:var(--warn);
+    border-color:var(--warn);
+    color:#fff;
+  }
+  .option.locked{ cursor:default; }
+  .option.dim{ opacity:.55; }
+
+  .explain-box{
+    margin-top:18px;
+    padding:16px 18px;
+    border-radius:12px;
+    background:#F3F0E6;
+    border:1px solid var(--line);
+    font-size:14.5px;
+    line-height:1.55;
+    color:var(--ink-soft);
+    display:none;
+  }
+  .explain-box.show{ display:block; animation:fadeUp .22s ease; }
+  .explain-box .label{
+    font-family:var(--mono);
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    color:var(--accent);
+    display:block;
+    margin-bottom:6px;
+  }
+  .explain-box .note{
+    margin-top:10px;
+    padding-top:10px;
+    border-top:1px dashed var(--line);
+    font-size:13px;
+    color:var(--warn);
+  }
+  @keyframes fadeUp{
+    from{ opacity:0; transform:translateY(4px); }
+    to{ opacity:1; transform:translateY(0); }
+  }
+
+  .q-actions{
+    display:flex;
+    justify-content:flex-end;
+    margin-top:20px;
+  }
+  .btn-next{
+    font-family:var(--mono);
+    font-size:13.5px;
+    background:var(--ink);
+    color:var(--paper);
+    border:none;
+    border-radius:10px;
+    padding:11px 20px;
+    cursor:pointer;
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .15s ease, background .15s ease;
+  }
+  .btn-next.show{ opacity:1; pointer-events:auto; }
+  .btn-next:hover{ background:var(--accent); }
+  .btn-next svg{ width:14px; height:14px; }
+
+  /* ---------- Results screen ---------- */
+  .result-hero{
+    text-align:center;
+    padding:36px 20px 8px;
+  }
+  .result-ring{
+    width:140px; height:140px;
+    margin:0 auto 18px;
+    position:relative;
+  }
+  .result-ring svg{ width:100%; height:100%; transform:rotate(-90deg); }
+  .result-ring-text{
+    position:absolute; inset:0;
+    display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+  }
+  .result-ring-text strong{
+    font-family:var(--serif);
+    font-size:32px;
+  }
+  .result-ring-text span{
+    font-family:var(--mono);
+    font-size:11px;
+    color:var(--ink-soft);
+  }
+  .result-hero h2{
+    font-family:var(--serif);
+    font-size:24px;
+    margin:6px 0 6px;
+  }
+  .result-hero p{
+    color:var(--ink-soft);
+    font-size:15px;
+    max-width:46ch;
+    margin:0 auto;
+  }
+
+  .result-actions{
+    display:flex;
+    gap:10px;
+    justify-content:center;
+    margin:26px 0 6px;
+    flex-wrap:wrap;
+  }
+  .btn{
+    font-family:var(--mono);
+    font-size:13.5px;
+    border-radius:10px;
+    padding:11px 18px;
+    cursor:pointer;
+    border:1.5px solid var(--line);
+    background:var(--card);
+    color:var(--ink);
+    transition:border-color .15s ease, background .15s ease;
+  }
+  .btn:hover{ border-color:var(--accent); }
+  .btn.primary{
+    background:var(--ink);
+    color:var(--paper);
+    border-color:var(--ink);
+  }
+  .btn.primary:hover{ background:var(--accent); border-color:var(--accent); }
+
+  .review-list{
+    margin-top:30px;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+  .review-item{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:13px 16px;
+    border-radius:11px;
+    border:1px solid var(--line);
+    background:var(--card);
+    font-size:14px;
+    cursor:pointer;
+  }
+  .review-item:hover{ border-color:var(--accent); }
+  .review-dot{
+    width:9px; height:9px;
+    border-radius:50%;
+    flex:none;
+  }
+  .review-dot.ok{ background:var(--accent); }
+  .review-dot.bad{ background:var(--warn); }
+  .review-q{
+    flex:1;
+    color:var(--ink-soft);
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .review-tag{
+    font-family:var(--mono);
+    font-size:11px;
+    color:var(--ink-soft);
+    flex:none;
+  }
+
+  .footer-note{
+    text-align:center;
+    margin-top:50px;
+    font-size:12px;
+    color:var(--ink-soft);
+    font-family:var(--mono);
+  }
+
+  .hidden{ display:none !important; }
+
+  /* keyboard hint */
+  .kbd-hint{
+    font-family:var(--mono);
+    font-size:11.5px;
+    color:var(--ink-soft);
+    text-align:center;
+    margin-top:14px;
+  }
+  .kbd-hint kbd{
+    border:1px solid var(--line);
+    border-radius:4px;
+    padding:1px 6px;
+    background:var(--card);
+  }
+</style>
+</head>
+<body>
+
+<div class="app" id="app">
+
+  <!-- ============ HOME SCREEN ============ -->
+  <div id="screen-home">
+    <div class="topbar">
+      <div class="brand">
+        <div class="brand-mark"><span></span></div>
+        <div class="brand-text">
+          <strong>БД-Тренажёр</strong>
+          <small>подготовка к экзамену по дисциплине «Базы данных»</small>
+        </div>
+      </div>
+      <div class="progress-pill" id="overall-pill">0 / 0 пройдено</div>
+    </div>
+
+    <div class="hero">
+      <div class="hero-eyebrow">PRIMARY KEY → готовность</div>
+      <h1>Тренируйся по билетам как перед ПДД — только вопросы про схемы, нормальные формы и SQL.</h1>
+      <p>4 билета, 92 вопроса. Проверяй себя по каждому билету отдельно или пройди марафон — все вопросы подряд, в случайном порядке, как на настоящем экзамене.</p>
+    </div>
+
+    <div class="stat-strip">
+      <div class="stat">
+        <div class="stat-num" id="stat-total">92</div>
+        <div class="stat-label">вопросов всего</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num" id="stat-bilets">4</div>
+        <div class="stat-label">билета в базе</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num" id="stat-best">—</div>
+        <div class="stat-label">лучший марафон</div>
+      </div>
+    </div>
+
+    <div class="section-head">
+      <span class="tag">режим</span>
+      <h2>Марафон</h2>
+      <div class="rule"></div>
+    </div>
+
+    <button class="marathon-card" id="start-marathon">
+      <div class="schema-row"></div>
+      <div class="marathon-top">
+        <div>
+          <h3>Все билеты подряд</h3>
+          <p>92 вопроса из всех 4 билетов в перемешанном порядке — полная имитация экзамена.</p>
+        </div>
+        <span class="marathon-badge" id="marathon-badge">92 вопроса</span>
+      </div>
+      <div class="marathon-cta">
+        Начать марафон
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </div>
+    </button>
+
+    <div class="section-head">
+      <span class="tag">режим</span>
+      <h2>По билетам</h2>
+      <div class="rule"></div>
+    </div>
+
+    <div class="bilet-grid" id="bilet-grid"></div>
+
+    <div class="footer-note">сделано для подготовки к зачёту · ответы и пояснения сверены вручную</div>
+  </div>
+
+  <!-- ============ QUIZ SCREEN ============ -->
+  <div id="screen-quiz" class="hidden">
+    <div class="quiz-header">
+      <button class="back-link" id="quiz-back">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>
+        к билетам
+      </button>
+      <div class="progress-pill" id="quiz-title-pill">Билет № 3</div>
+    </div>
+
+    <div class="quiz-track"><div class="quiz-track-fill" id="quiz-track-fill"></div></div>
+    <div class="quiz-track-meta">
+      <span id="quiz-progress-text">Вопрос 1 / 23</span>
+      <span id="quiz-score-text">✓ 0 · ✗ 0</span>
+    </div>
+
+    <div class="q-card">
+      <div class="q-tagrow">
+        <span class="src" id="q-source-tag">Билет № 3 · вопрос 1</span>
+      </div>
+      <p class="q-text" id="q-text"></p>
+      <div class="options" id="q-options"></div>
+
+      <div class="explain-box" id="explain-box">
+        <span class="label">Почему так</span>
+        <span id="explain-text"></span>
+        <div class="note hidden" id="explain-note"></div>
+      </div>
+
+      <div class="q-actions">
+        <button class="btn-next" id="btn-next">
+          Дальше
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="kbd-hint">Подсказка: клавиши <kbd>1</kbd>–<kbd>3</kbd> выбирают вариант, <kbd>→</kbd> или <kbd>Enter</kbd> — дальше</div>
+  </div>
+
+  <!-- ============ RESULTS SCREEN ============ -->
+  <div id="screen-results" class="hidden">
+    <div class="topbar">
+      <div class="brand">
+        <div class="brand-mark"><span></span></div>
+        <div class="brand-text">
+          <strong>БД-Тренажёр</strong>
+          <small>результат прохождения</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="result-hero">
+      <div class="result-ring">
+        <svg viewBox="0 0 140 140">
+          <circle cx="70" cy="70" r="60" fill="none" stroke="#D8D2C2" stroke-width="10"/>
+          <circle id="result-ring-circle" cx="70" cy="70" r="60" fill="none" stroke="#1F6F5C" stroke-width="10" stroke-linecap="round"/>
+        </svg>
+        <div class="result-ring-text">
+          <strong id="result-pct">0%</strong>
+          <span id="result-frac">0 / 0</span>
+        </div>
+      </div>
+      <h2 id="result-title">Готово!</h2>
+      <p id="result-msg">Результат сохранён.</p>
+    </div>
+
+    <div class="result-actions">
+      <button class="btn primary" id="result-retry">Пройти ещё раз</button>
+      <button class="btn" id="result-mistakes">Повторить только ошибки</button>
+      <button class="btn" id="result-home">К списку билетов</button>
+    </div>
+
+    <div class="section-head">
+      <span class="tag">разбор</span>
+      <h2>Все вопросы</h2>
+      <div class="rule"></div>
+    </div>
+
+    <div class="review-list" id="review-list"></div>
+  </div>
+
+</div>
+
+<script src="data.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  /* ---------------- State & storage ---------------- */
+  const STORAGE_KEY = "db-quiz-progress-v1";
+  let progress = loadProgress();
+
+  function loadProgress(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(raw) return JSON.parse(raw);
+    }catch(e){}
+    return { bilets:{}, bestMarathonPct:null };
+  }
+  function saveProgress(){
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(progress)); }catch(e){}
+  }
+
+  const BILET_IDS = Object.keys(QUIZ_DATA);
+
+  function totalQuestions(){
+    return BILET_IDS.reduce((sum,id)=> sum + QUIZ_DATA[id].questions.length, 0);
+  }
+
+  /* ---------------- Session (current run) ---------------- */
+  let session = null;
+  // session = { mode:'bilet'|'marathon'|'mistakes', biletId, items:[{biletId,qIndex}], cursor, answers:[{correct:bool}], sourceSession (for mistakes) }
+
+  function shuffle(arr){
+    const a = arr.slice();
+    for(let i=a.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [a[i],a[j]] = [a[j],a[i]];
+    }
+    return a;
+  }
+
+  function buildItemsForBilet(biletId){
+    return QUIZ_DATA[biletId].questions.map((_,i)=>({biletId, qIndex:i}));
+  }
+  function buildItemsForMarathon(){
+    let items = [];
+    BILET_IDS.forEach(id=>{
+      items = items.concat(buildItemsForBilet(id));
+    });
+    return shuffle(items);
+  }
+
+  function getQuestion(item){
+    return QUIZ_DATA[item.biletId].questions[item.qIndex];
+  }
+
+  /* ---------------- Screens ---------------- */
+  const screens = {
+    home: document.getElementById('screen-home'),
+    quiz: document.getElementById('screen-quiz'),
+    results: document.getElementById('screen-results'),
+  };
+  function showScreen(name){
+    Object.values(screens).forEach(s=>s.classList.add('hidden'));
+    screens[name].classList.remove('hidden');
+    window.scrollTo({top:0, behavior:'instant' in window ? 'instant' : 'auto'});
+  }
+
+  /* ---------------- Home screen render ---------------- */
+  const biletGrid = document.getElementById('bilet-grid');
+  const overallPill = document.getElementById('overall-pill');
+  const statTotal = document.getElementById('stat-total');
+  const statBilets = document.getElementById('stat-bilets');
+  const statBest = document.getElementById('stat-best');
+  const marathonBadge = document.getElementById('marathon-badge');
+
+  function renderHome(){
+    statTotal.textContent = totalQuestions();
+    statBilets.textContent = BILET_IDS.length;
+    marathonBadge.textContent = totalQuestions() + " вопросов";
+    statBest.textContent = (progress.bestMarathonPct!=null) ? progress.bestMarathonPct + "%" : "—";
+
+    let doneCount = 0;
+    BILET_IDS.forEach(id=>{
+      const p = progress.bilets[id];
+      if(p && p.lastPct!=null) doneCount++;
+    });
+    overallPill.textContent = doneCount + " / " + BILET_IDS.length + " билетов пройдено";
+
+    biletGrid.innerHTML = "";
+    BILET_IDS.forEach(id=>{
+      const data = QUIZ_DATA[id];
+      const p = progress.bilets[id];
+      const card = document.createElement('button');
+      card.className = 'bilet-card';
+      const scoreHtml = (p && p.lastPct!=null)
+        ? `<span class="bilet-score">${p.lastPct}%</span>`
+        : `<span class="bilet-score empty">не пройден</span>`;
+      const fillWidth = (p && p.lastPct!=null) ? p.lastPct : 0;
+      card.innerHTML = `
+        <div class="bilet-card-top">
+          <span class="bilet-num">БИЛЕТ</span>
+          ${scoreHtml}
+        </div>
+        <h3>${data.title.replace('Билет ', '')}</h3>
+        <div class="bilet-meta">${data.questions.length} вопросов</div>
+        <div class="bilet-bar"><div class="bilet-bar-fill" style="width:${fillWidth}%"></div></div>
+      `;
+      card.addEventListener('click', ()=> startSession('bilet', id));
+      biletGrid.appendChild(card);
+    });
+  }
+
+  document.getElementById('start-marathon').addEventListener('click', ()=> startSession('marathon'));
+  document.getElementById('quiz-back').addEventListener('click', ()=>{ showScreen('home'); renderHome(); });
+  document.getElementById('result-home').addEventListener('click', ()=>{ showScreen('home'); renderHome(); });
+
+  /* ---------------- Start a session ---------------- */
+  function startSession(mode, biletId){
+    let items;
+    if(mode === 'bilet'){
+      items = buildItemsForBilet(biletId);
+    } else if(mode === 'marathon'){
+      items = buildItemsForMarathon();
+    } else if(mode === 'mistakes'){
+      items = session.items.filter((it,i)=> session.answers[i] && !session.answers[i].correct);
+      if(items.length === 0){ return; }
+    }
+    session = {
+      mode, biletId,
+      items,
+      cursor: 0,
+      answers: new Array(items.length).fill(null),
+      locked: false
+    };
+    showScreen('quiz');
+    renderQuestion();
+  }
+
+  /* ---------------- Quiz rendering ---------------- */
+  const qSourceTag = document.getElementById('q-source-tag');
+  const qText = document.getElementById('q-text');
+  const qOptions = document.getElementById('q-options');
+  const explainBox = document.getElementById('explain-box');
+  const explainText = document.getElementById('explain-text');
+  const explainNote = document.getElementById('explain-note');
+  const btnNext = document.getElementById('btn-next');
+  const quizTrackFill = document.getElementById('quiz-track-fill');
+  const quizProgressText = document.getElementById('quiz-progress-text');
+  const quizScoreText = document.getElementById('quiz-score-text');
+  const quizTitlePill = document.getElementById('quiz-title-pill');
+
+  const LETTERS = ['А','Б','В','Г'];
+
+  function renderQuestion(){
+    const item = session.items[session.cursor];
+    const q = getQuestion(item);
+    const biletTitle = QUIZ_DATA[item.biletId].title;
+
+    let modeLabel;
+    if(session.mode === 'marathon') modeLabel = 'Марафон';
+    else if(session.mode === 'mistakes') modeLabel = 'Повтор ошибок';
+    else modeLabel = biletTitle;
+    quizTitlePill.textContent = modeLabel;
+
+    qSourceTag.textContent = biletTitle + " · вопрос " + (item.qIndex+1);
+    qText.textContent = q.q;
+
+    qOptions.innerHTML = "";
+    q.options.forEach((opt, i)=>{
+      const btn = document.createElement('button');
+      btn.className = 'option';
+      btn.innerHTML = `<span class="letter">${LETTERS[i]}</span><span>${opt}</span>`;
+      btn.addEventListener('click', ()=> selectAnswer(i));
+      qOptions.appendChild(btn);
+    });
+
+    explainBox.classList.remove('show');
+    explainNote.classList.add('hidden');
+    btnNext.classList.remove('show');
+    session.locked = false;
+
+    const answered = session.answers[session.cursor];
+    if(answered){
+      lockOptions(answered.picked, q);
+    }
+
+    updateProgressBar();
+  }
+
+  function updateProgressBar(){
+    const total = session.items.length;
+    const current = session.cursor + 1;
+    quizTrackFill.style.width = (((session.cursor)/total)*100) + "%";
+    quizProgressText.textContent = "Вопрос " + current + " / " + total;
+    const correctCount = session.answers.filter(a=>a && a.correct).length;
+    const wrongCount = session.answers.filter(a=>a && !a.correct).length;
+    quizScoreText.textContent = "✓ " + correctCount + " · ✗ " + wrongCount;
+  }
+
+  function selectAnswer(i){
+    if(session.locked) return;
+    const item = session.items[session.cursor];
+    const q = getQuestion(item);
+    const isCorrect = (i === q.correct);
+    session.answers[session.cursor] = { picked:i, correct:isCorrect };
+    session.locked = true;
+    lockOptions(i, q);
+    updateProgressBar();
+  }
+
+  function lockOptions(picked, q){
+    const optionEls = qOptions.querySelectorAll('.option');
+    optionEls.forEach((el, i)=>{
+      el.classList.add('locked');
+      if(i === q.correct){
+        el.classList.add('correct');
+      } else if(i === picked){
+        el.classList.add('wrong');
+      } else {
+        el.classList.add('dim');
+      }
+    });
+    explainText.textContent = q.explain;
+    if(q.note){
+      explainNote.textContent = "⚠ " + q.note;
+      explainNote.classList.remove('hidden');
+    } else {
+      explainNote.classList.add('hidden');
+    }
+    explainBox.classList.add('show');
+    btnNext.classList.add('show');
+    session.locked = true;
+  }
+
+  btnNext.addEventListener('click', goNext);
+
+  function goNext(){
+    if(!session.answers[session.cursor]) return; // must answer first
+    if(session.cursor < session.items.length - 1){
+      session.cursor++;
+      renderQuestion();
+    } else {
+      finishSession();
+    }
+  }
+
+  // keyboard support
+  document.addEventListener('keydown', (e)=>{
+    if(screens.quiz.classList.contains('hidden')) return;
+    if(e.key >= '1' && e.key <= '4'){
+      const idx = parseInt(e.key,10)-1;
+      const item = session.items[session.cursor];
+      const q = getQuestion(item);
+      if(idx < q.options.length && !session.locked){
+        selectAnswer(idx);
+      }
+    } else if(e.key === 'Enter' || e.key === 'ArrowRight'){
+      if(session.locked) goNext();
+    }
+  });
+
+  /* ---------------- Finish & results ---------------- */
+  function finishSession(){
+    const total = session.items.length;
+    const correctCount = session.answers.filter(a=>a && a.correct).length;
+    const pct = Math.round((correctCount/total)*100);
+
+    if(session.mode === 'bilet'){
+      progress.bilets[session.biletId] = progress.bilets[session.biletId] || {};
+      progress.bilets[session.biletId].lastPct = pct;
+      saveProgress();
+    } else if(session.mode === 'marathon'){
+      if(progress.bestMarathonPct == null || pct > progress.bestMarathonPct){
+        progress.bestMarathonPct = pct;
+      }
+      saveProgress();
+    }
+
+    renderResults(correctCount, total, pct);
+    showScreen('results');
+  }
+
+  const resultPct = document.getElementById('result-pct');
+  const resultFrac = document.getElementById('result-frac');
+  const resultTitle = document.getElementById('result-title');
+  const resultMsg = document.getElementById('result-msg');
+  const resultRingCircle = document.getElementById('result-ring-circle');
+  const reviewList = document.getElementById('review-list');
+  const resultRetry = document.getElementById('result-retry');
+  const resultMistakes = document.getElementById('result-mistakes');
+
+  const RING_CIRC = 2 * Math.PI * 60;
+  resultRingCircle.style.strokeDasharray = RING_CIRC;
+
+  function renderResults(correctCount, total, pct){
+    resultPct.textContent = pct + "%";
+    resultFrac.textContent = correctCount + " / " + total;
+    const offset = RING_CIRC * (1 - pct/100);
+    resultRingCircle.style.strokeDashoffset = offset;
+    resultRingCircle.style.stroke = pct >= 70 ? "#1F6F5C" : (pct >= 40 ? "#C49A3A" : "#B5542A");
+
+    let title, msg;
+    if(pct === 100){ title = "Идеально"; msg = "Все ответы верны. Можно переходить к следующему билету или марафону."; }
+    else if(pct >= 80){ title = "Отличный результат"; msg = "Почти всё верно — повтори вопросы с ошибками, и можно сдавать."; }
+    else if(pct >= 50){ title = "Неплохо, но есть пробелы"; msg = "Стоит повторить разделы с ошибками перед экзаменом."; }
+    else { title = "Нужно ещё позаниматься"; msg = "Разбери пояснения ниже — это поможет закрыть пробелы в теории."; }
+    resultTitle.textContent = title;
+    resultMsg.textContent = msg;
+
+    reviewList.innerHTML = "";
+    session.items.forEach((item, i)=>{
+      const q = getQuestion(item);
+      const ans = session.answers[i];
+      const ok = ans && ans.correct;
+      const row = document.createElement('div');
+      row.className = 'review-item';
+      row.innerHTML = `
+        <span class="review-dot ${ok?'ok':'bad'}"></span>
+        <span class="review-q">${q.q}</span>
+        <span class="review-tag">${QUIZ_DATA[item.biletId].title.replace('Билет ','')} · ${item.qIndex+1}</span>
+      `;
+      row.addEventListener('click', ()=>{
+        session.cursor = i;
+        showScreen('quiz');
+        renderQuestion();
+      });
+      reviewList.appendChild(row);
+    });
+
+    const mistakeCount = session.answers.filter(a=>a && !a.correct).length;
+    if(mistakeCount === 0){
+      resultMistakes.style.display = 'none';
+    } else {
+      resultMistakes.style.display = '';
+      resultMistakes.textContent = "Повторить ошибки (" + mistakeCount + ")";
+    }
+  }
+
+  resultRetry.addEventListener('click', ()=>{
+    startSession(session.mode, session.biletId);
+  });
+  resultMistakes.addEventListener('click', ()=>{
+    startSession('mistakes');
+  });
+
+  /* ---------------- Init ---------------- */
+  renderHome();
+  showScreen('home');
+
+})();
+</script>
+</body>
+</html>
